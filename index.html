@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.png">
+    <title>PaddleIQ</title>
+    <style>
+        :root {
+            --bg: #f9f9f9;
+            --text: #111;
+            --accent: #1e90ff;
+            --card: #fff;
+        }
+
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"] {
+            padding: 0.5rem;
+            font-size: 1rem;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .score {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--accent);
+            text-align: center;
+        }
+
+        .note {
+            text-align: center;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-small {
+            font-size: 0.9rem;
+            color: #444;
+            margin-top: 0.3rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>PaddleIQ</h1>
+    <input type="text" id="search" placeholder="Search lake or river..." list="locations" />
+    <datalist id="locations">
+        <option value="Stone Mountain">
+        <option value="Chattahoochee River">
+        <option value="Tennessee River">
+        <option value="Lake Lanier">
+        <option value="Lake Allatoona">
+        <option value="Nottely Lake">
+        <option value="Oconee River">
+        <option value="Flint River">
+        <option value="Chatooga River">
+    </datalist>
+
+    <div class="card">
+        <div class="score" id="score">-</div>
+        <div class="note" id="note">Loading...</div>
+    </div>
+
+    <div class="grid">
+        <div class="stat-card">
+            <div class="stat-label">Wind Speed</div>
+            <div id="wind">-</div>
+            <div id="wind-score" class="score-small"></div>
+            <a id="wind-link" class="data-link" href="#" target="_blank">More data</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Weather</div>
+            <div id="weather">-</div>
+            <div id="weather-score" class="score-small"></div>
+            <a id="weather-link" class="data-link" href="#" target="_blank">More data</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">UV Index</div>
+            <div id="uv">-</div>
+            <div id="uv-score" class="score-small"></div>
+            <a id="uv-link" class="data-link" href="#" target="_blank">More data</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Water Temp</div>
+            <div id="water-temp">-</div>
+            <div id="water-temp-score" class="score-small"></div>
+            <a id="water-temp-link" class="data-link" href="#" target="_blank">More data</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Temp</div>
+            <div id="temp">-</div>
+            <div id="temp-score" class="score-small"></div>
+            <a id="temp-link" class="data-link" href="#" target="_blank">More data</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Flow Rate</div>
+            <div id="flow">-</div>
+            <div id="flow-score" class="score-small"></div>
+            <a id="flow-link" class="data-link" href="#" target="_blank">More data</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">E. coli</div>
+            <div id="ecoli">Error 406</div>
+            <a id="ecoli-link" class="data-link" href="https://ga.water.usgs.gov/bacteria/" target="_blank">More
+                data</a>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Data Source</div>
+            <div id="source">-</div>
+        </div>
+    </div>
+
+    <script>
+        const LOCATIONS = {
+            "Chattahoochee River": {
+                lat: 34.701,
+                lon: -83.727,
+                usgsSite: "02336000"
+            },
+            "Stone Mountain": {
+                lat: 33.8053,
+                lon: -84.1458,
+                usgsSite: null
+            },
+            "Tennessee River": {
+                lat: 35.1339,
+                lon: -85.3074,
+                usgsSite: "03568000"
+            },
+            "Lake Lanier": {
+                lat: 34.2529,
+                lon: -83.9607,
+                usgsSite: "02334400"
+            },
+            "Lake Allatoona": {
+                lat: 34.1032,
+                lon: -84.6543,
+                usgsSite: "02393500"
+            },
+            "Nottely Lake": {
+                lat: 34.9162,
+                lon: -84.0120,
+                usgsSite: "03553000"
+            },
+            "Oconee River": {
+                lat: 33.9326,
+                lon: -83.4201,
+                usgsSite: "02223248"
+            },
+            "Flint River": {
+                lat: 31.9836,
+                lon: -84.1840,
+                usgsSite: "02346180"
+            },
+            "Chatooga River": {
+                lat: 34.9306,
+                lon: -83.8958,
+                usgsSite: "02177000"
+            }
+        };
+
+        async function fetchWeather(lat, lon) {
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,uv_index`);
+            const data = await res.json();
+            return data.current;
+        }
+
+        async function fetchUSGSFlow(siteId) {
+            if (!siteId) return null;
+            const res = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${siteId}&parameterCd=00060`);
+            const data = await res.json();
+            try {
+                return parseFloat(data.value.timeSeries[0].values[0].value[0].value);
+            } catch {
+                return null;
+            }
+        }
+
+        async function fetchUSGSWaterTemp(siteId) {
+            if (!siteId) return null;
+            const res = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${siteId}&parameterCd=00010`);
+            const data = await res.json();
+            try {
+                return parseFloat(data.value.timeSeries[0].values[0].value[0].value);
+            } catch {
+                return null;
+            }
+        }
+
+        function scoreWind(speed) {
+            if (speed <= 5) return 100;
+            if (speed <= 10) return 70;
+            if (speed <= 15) return 40;
+            if (speed <= 20) return 20;
+            return 0;
+        }
+
+        function scoreWeather(code) {
+            if ([0, 1, 2].includes(code)) return 100;
+            if ([3, 45, 48].includes(code)) return 70;
+            if ([51, 53, 55].includes(code)) return 40;
+            if ([61, 63, 65, 80, 81].includes(code)) return 10;
+            return 0;
+        }
+
+        function scoreUV(uv) {
+            if (uv <= 2) return 100;
+            if (uv <= 5) return 80;
+            if (uv <= 7) return 60;
+            if (uv <= 10) return 30;
+            return 0;
+        }
+
+        function scoreTemp(t) {
+            if (t >= 60 && t <= 80) return 100;
+            if ((t >= 50 && t < 60) || (t > 80 && t <= 85)) return 70;
+            if ((t >= 40 && t < 50) || (t > 85 && t <= 90)) return 40;
+            return 10;
+        }
+
+        function scoreWaterTemp(t) {
+            if (t === null || isNaN(t)) return null;
+            if (t > 60) return 100;
+            if (t >= 50) return 70;
+            if (t >= 40) return 30;
+            return 0;
+        }
+
+        function scoreFlow(ratio) {
+            if (ratio === null || isNaN(ratio)) return null;
+            if (ratio >= 0.8 && ratio <= 1.2) return 100;
+            if ((ratio >= 0.6 && ratio < 0.8) || (ratio > 1.2 && ratio <= 1.4)) return 70;
+            if ((ratio >= 0.4 && ratio < 0.6) || (ratio > 1.4 && ratio <= 1.7)) return 40;
+            return 0;
+        }
+
+        function calculateScore(data) {
+            const rawScores = {
+                weather: { value: scoreWeather(data.weather), weight: 0.3 },
+                wind: { value: scoreWind(data.wind), weight: 0.25 },
+                uv: { value: scoreUV(data.uv), weight: 0.1 },
+                temp: { value: scoreTemp(data.temp), weight: 0.1 },
+                waterTemp: { value: scoreWaterTemp(data.waterTemp), weight: 0.15 },
+                flow: { value: scoreFlow(data.flowRatio), weight: 0.1 }
+            };
+
+            const valid = Object.entries(rawScores).filter(([_, s]) => s.value !== null && !isNaN(s.value));
+            const totalWeight = valid.reduce((acc, [_, s]) => acc + s.weight, 0);
+
+            if (totalWeight === 0) {
+                console.warn("All score values are null or NaN. Returning score 0.");
+                return 0;
+            }
+
+            // Normalized score using adjusted weights
+            const normalizedScore = valid.reduce((acc, [_, s]) => {
+                const adjustedWeight = s.weight / totalWeight;
+                return acc + s.value * adjustedWeight;
+            }, 0);
+
+            // Debug log (optional)
+            console.group("Score Calculation Debug");
+            console.log("Raw Scores:", rawScores);
+            valid.forEach(([key, s]) => {
+                const adjWeight = (s.weight / totalWeight).toFixed(3);
+                console.log(`${key}: value=${s.value}, rawWeight=${s.weight}, adjWeight=${adjWeight}, contrib=${(s.value * s.weight / totalWeight).toFixed(2)}`);
+            });
+            console.log("Final normalized score:", normalizedScore.toFixed(2));
+            console.groupEnd();
+
+            return normalizedScore.toFixed(0);
+        }
+
+        async function update(location) {
+            const loc = LOCATIONS[location];
+            document.getElementById('note').textContent = `Showing conditions for ${location}`;
+
+            const weatherData = await fetchWeather(loc.lat, loc.lon);
+            const flowValue = await fetchUSGSFlow(loc.usgsSite);
+            const flowRatio = flowValue !== null ? flowValue / 150 : null;
+            const waterTempC = await fetchUSGSWaterTemp(loc.usgsSite);
+            const waterTempF = waterTempC !== null ? (waterTempC * 9 / 5 + 32).toFixed(1) : null;
+            const tempF = (weatherData.temperature_2m * 9 / 5 + 32).toFixed(1);
+
+            // Compute individual scores
+            const scores = {
+                wind: scoreWind(weatherData.wind_speed_10m),
+                weather: scoreWeather(weatherData.weather_code),
+                uv: scoreUV(weatherData.uv_index),
+                temp: scoreTemp(tempF),
+                waterTemp: scoreWaterTemp(waterTempF),
+                flow: scoreFlow(flowRatio)
+            };
+
+            const totalScore = calculateScore({
+                wind: weatherData.wind_speed_10m,
+                weather: weatherData.weather_code,
+                uv: weatherData.uv_index,
+                temp: tempF,
+                waterTemp: waterTempF,
+                flowRatio
+            });
+
+            document.getElementById('score').textContent = totalScore;
+
+            const weatherDescriptions = {
+                0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+                45: 'Fog', 48: 'Depositing rime fog', 51: 'Light drizzle',
+                53: 'Moderate drizzle', 55: 'Dense drizzle', 61: 'Slight rain',
+                63: 'Moderate rain', 65: 'Heavy rain', 80: 'Rain showers', 81: 'Heavy rain showers'
+            };
+
+            // Fill data + scores + links
+            document.getElementById('wind').textContent = `${weatherData.wind_speed_10m} mph`;
+            document.getElementById('wind-score').textContent = `Score: ${scores.wind}`;
+            document.getElementById('wind-link').href = `https://open-meteo.com/en/docs`;
+
+            document.getElementById('weather').textContent = weatherDescriptions[weatherData.weather_code] || `Unknown`;
+            document.getElementById('weather-score').textContent = `Score: ${scores.weather}`;
+            document.getElementById('weather-link').href = `https://open-meteo.com/en/docs`;
+
+            document.getElementById('uv').textContent = weatherData.uv_index;
+            document.getElementById('uv-score').textContent = `Score: ${scores.uv}`;
+            document.getElementById('uv-link').href = `https://open-meteo.com/en/docs`;
+
+            document.getElementById('temp').textContent = `${tempF} °F`;
+            document.getElementById('temp-score').textContent = `Score: ${scores.temp}`;
+            document.getElementById('temp-link').href = `https://open-meteo.com/en/docs`;
+
+            document.getElementById('water-temp').textContent = waterTempF !== null ? `${waterTempF} °F` : 'No data';
+            document.getElementById('water-temp-score').textContent = `Score: ${scores.waterTemp}`;
+            document.getElementById('water-temp-link').href = `https://waterdata.usgs.gov/nwis`;
+
+            document.getElementById('flow').textContent = flowValue ? `${flowValue} cfs` : 'N/A';
+            document.getElementById('flow-score').textContent = `Score: ${scores.flow}`;
+            document.getElementById('flow-link').href = `https://waterdata.usgs.gov/nwis`;
+
+            document.getElementById('source').textContent = 'Open-Meteo + USGS';
+        }
+
+
+        document.getElementById('search').addEventListener('change', (e) => {
+            const value = e.target.value;
+            if (LOCATIONS[value]) update(value);
+        });
+
+        update('Stone Mountain');
+    </script>
+</body>
+
+</html>
