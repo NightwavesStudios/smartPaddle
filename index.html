@@ -7,134 +7,7 @@
     <link rel="icon" type="image/x-icon" href="/assets/favicon.png">
     <meta name="google-site-verification" content="GWF79KhCTjbwLpoNTb6XK36HM-6LPLZH2vCLmQqw31Y" />
     <title>PaddleIQ</title>
-    <style>
-        :root {
-            --bg: #f5f5f5;
-            --text: #333;
-            --accent: #4a90e2;
-            --card: #ffffff;
-            --header-footer-bg: #ffffff;
-            --header-footer-text: #4a90e2;
-            --shadow: rgba(0, 0, 0, 0.1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Arial', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: hidden;
-        }
-
-        header {
-            width: 100%;
-            background: var(--header-footer-bg);
-            color: var(--header-footer-text);
-            box-shadow: 0 2px 4px var(--shadow);
-            padding: 1rem 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        header h1 {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 1.8rem;
-        }
-
-        header h1 img.logo {
-            height: 36px;
-            width: 36px;
-        }
-
-        main {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2rem;
-            width: 100%;
-            max-width: 960px;
-            padding: 1rem;
-        }
-
-        .score-card {
-            background: var(--card);
-            border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            text-align: center;
-            max-width: 600px;
-            width: 100%;
-        }
-
-        .score-card .score {
-            font-size: 4rem;
-            font-weight: bold;
-            color: var(--accent);
-        }
-
-        .score-card .note {
-            font-size: 1.2rem;
-            color: var(--text);
-            margin-top: 0.5rem;
-        }
-
-        .search-bar {
-            width: 100%;
-            max-width: 500px;
-            padding: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            box-shadow: 0 2px 4px var(--shadow);
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            width: 100%;
-            max-width: 600px;
-        }
-
-        .stat-card {
-            background: var(--card);
-            border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            padding: 1rem;
-            text-align: center;
-        }
-
-        footer {
-            width: 100%;
-            background: var(--header-footer-bg);
-            color: var(--header-footer-text);
-            text-align: center;
-            padding: 0.5rem 0;
-            font-size: 0.9rem;
-            box-shadow: 0 -2px 4px var(--shadow);
-        }
-
-        a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="/styles.css" />
 </head>
 
 <body>
@@ -290,6 +163,27 @@
             }
         }
 
+        async function fetchUSGSAverageFlow(siteId) {
+            if (!siteId) return null;
+            const now = new Date();
+            const endDate = now.toISOString().split('T')[0];
+            const startDate = new Date(now.setDate(now.getDate() - 30)).toISOString().split('T')[0];
+
+            const res = await fetch(`https://waterservices.usgs.gov/nwis/dv/?format=json&sites=${siteId}&startDT=${startDate}&endDT=${endDate}&parameterCd=00060&statCd=00003`);
+            const data = await res.json();
+
+            try {
+                const values = data.value.timeSeries[0].values[0].value
+                    .map(d => parseFloat(d.value))
+                    .filter(v => !isNaN(v));
+
+                const sum = values.reduce((a, b) => a + b, 0);
+                return values.length > 0 ? sum / values.length : null;
+            } catch {
+                return null;
+            }
+        }
+
         async function fetchUSGSWaterTemp(siteId) {
             if (!siteId) return null;
             const res = await fetch(`https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${siteId}&parameterCd=00010`);
@@ -303,9 +197,12 @@
 
         function scoreWind(speed) {
             if (speed <= 5) return 100;
-            if (speed <= 10) return 70;
-            if (speed <= 15) return 40;
+            if (speed <= 10) return 90;
+            if (speed <= 15) return 50;
             if (speed <= 20) return 20;
+            if (speed > 20) return 10;
+            if (speed > 25) return 5;
+            if (speed > 30) return 0;
             return 0;
         }
 
@@ -319,9 +216,10 @@
 
         function scoreUV(uv) {
             if (uv <= 2) return 100;
-            if (uv <= 5) return 80;
+            if (uv <= 5) return 95;
             if (uv <= 7) return 60;
-            if (uv <= 10) return 30;
+            if (uv <= 10) return 25;
+            if (uv <= 11) return 0;
             return 0;
         }
 
@@ -334,9 +232,15 @@
 
         function scoreWaterTemp(t) {
             if (t === null || isNaN(t)) return null;
-            if (t > 60) return 100;
-            if (t >= 50) return 70;
-            if (t >= 40) return 30;
+            if (t >= 70) return 100;
+            if (t >= 65) return 75;
+            if (t >= 60) return 50;
+            if (t >= 50) return 10;
+            if (t >= 45) return 5;
+            if (t >= 42) return 5;
+            if (t >= 41) return 5;
+            if (t >= 40) return 5;
+            if (t >= 35) return 0;
             return 0;
         }
 
@@ -391,7 +295,8 @@
 
             const weatherData = await fetchWeather(loc.lat, loc.lon);
             const flowValue = await fetchUSGSFlow(loc.usgsSite);
-            const flowRatio = flowValue !== null ? flowValue / 150 : null;
+            const avgFlow = await fetchUSGSAverageFlow(loc.usgsSite);
+            const flowRatio = (flowValue !== null && avgFlow !== null) ? flowValue / avgFlow : null;
             const waterTempC = await fetchUSGSWaterTemp(loc.usgsSite);
             const waterTempF = waterTempC !== null ? (waterTempC * 9 / 5 + 32).toFixed(1) : null;
             const tempF = (weatherData.temperature_2m * 9 / 5 + 32).toFixed(1);
@@ -445,9 +350,12 @@
             document.getElementById('water-temp-score').textContent = `Score: ${scores.waterTemp}`;
             document.getElementById('water-temp-link').href = `https://waterdata.usgs.gov/nwis`;
 
-            document.getElementById('flow').textContent = flowValue ? `${flowValue} cfs` : 'N/A';
+            document.getElementById('flow').textContent = (flowValue && avgFlow)
+                ? `${flowValue.toFixed(1)} cfs (avg: ${avgFlow.toFixed(1)} cfs)`
+                : 'N/A';
             document.getElementById('flow-score').textContent = `Score: ${scores.flow}`;
-            document.getElementById('flow-link').href = `https://waterdata.usgs.gov/nwis`;
+            document.getElementById('flow-link').href = `/insights/flow.html?site=${loc.usgsSite}&name=${location}`;
+
 
             document.getElementById('source').textContent = 'Open-Meteo + USGS';
         }

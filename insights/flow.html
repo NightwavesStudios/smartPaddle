@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Water Details - PaddleIQ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body>
+
+    <header>
+        <h1>
+            <img src="/assets/favicon.png" alt="PaddleIQ logo" class="logo" />
+            PaddleIQ
+        </h1>
+    </header>
+
+    <main class="container">
+        <h1>Water Conditions for <span id="location-name"></span></h1>
+        <p>Site ID: <span id="site-id"></span></p>
+
+        <canvas id="flowChart"></canvas>
+        <canvas id="tempChart"></canvas>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 PaddleIQ. Data from <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> & <a
+                    href="https://waterdata.usgs.gov" target="_blank">USGS</a>.</p>
+        </div>
+    </footer>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const siteId = urlParams.get('site');
+        const locationName = urlParams.get('name');
+        document.getElementById('site-id').textContent = siteId;
+        document.getElementById('location-name').textContent = locationName;
+
+        async function fetchChartData(siteId, paramCd) {
+            const now = new Date();
+            const endDate = now.toISOString().split('T')[0];
+            const startDate = new Date(now.setDate(now.getDate() - 30)).toISOString().split('T')[0];
+            const url = `https://waterservices.usgs.gov/nwis/dv/?format=json&sites=${siteId}&startDT=${startDate}&endDT=${endDate}&parameterCd=${paramCd}&statCd=00003`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            try {
+                const values = data.value.timeSeries[0].values[0].value;
+                const labels = values.map(v => v.dateTime.split("T")[0]);
+                const points = values.map(v => parseFloat(v.value));
+                return { labels, points };
+            } catch {
+                return { labels: [], points: [] };
+            }
+        }
+
+        function calculateMedian(arr) {
+            const sorted = arr.slice().sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 !== 0
+                ? sorted[mid]
+                : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+
+        async function render() {
+            const flow = await fetchChartData(siteId, "00060");
+            const tempCelsius = await fetchChartData(siteId, "00010");
+
+            const flowMedian = calculateMedian(flow.points);
+
+            // Convert temps from Celsius to Fahrenheit
+            const tempFahrenheit = tempCelsius.points.map(c => c * 9 / 5 + 32);
+            const tempMedianF = calculateMedian(tempFahrenheit);
+
+            new Chart(document.getElementById('flowChart'), {
+                type: 'line',
+                data: {
+                    labels: flow.labels,
+                    datasets: [
+                        {
+                            label: 'Flow (cfs)',
+                            data: flow.points,
+                            borderColor: 'blue',
+                            fill: false
+                        },
+                        {
+                            label: `Median Flow (${flowMedian.toFixed(2)} cfs)`,
+                            data: Array(flow.labels.length).fill(flowMedian),
+                            borderColor: 'rgba(0,0,255,0.3)',
+                            borderDash: [10, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                }
+            });
+
+            new Chart(document.getElementById('tempChart'), {
+                type: 'line',
+                data: {
+                    labels: tempCelsius.labels,
+                    datasets: [
+                        {
+                            label: 'Water Temp (°F)',
+                            data: tempFahrenheit,
+                            borderColor: 'red',
+                            fill: false
+                        },
+                        {
+                            label: `Median Temp (${tempMedianF.toFixed(1)} °F)`,
+                            data: Array(tempFahrenheit.length).fill(tempMedianF),
+                            borderColor: 'rgba(255,0,0,0.3)',
+                            borderDash: [10, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                safeZone: {
+                                    type: 'box',
+                                    yMin: 60,
+                                    yMax: 100,
+                                    backgroundColor: 'rgba(0,255,0,0.05)',
+                                    borderWidth: 0,
+                                    label: {
+                                        content: 'Safe Zone',
+                                        enabled: true,
+                                        position: 'start',
+                                        color: 'green',
+                                        backgroundColor: 'rgba(0,255,0,0.1)'
+                                    }
+                                },
+                                drysuitZone: {
+                                    type: 'box',
+                                    yMin: 30,
+                                    yMax: 55,
+                                    backgroundColor: 'rgba(255,165,0,0.07)',
+                                    borderWidth: 0,
+                                    label: {
+                                        content: 'Drysuit Zone',
+                                        enabled: true,
+                                        position: 'end',
+                                        color: 'orange',
+                                        backgroundColor: 'rgba(255,165,0,0.1)'
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Temperature (°F)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        if (siteId) render();
+    </script>
+
+</body>
+
+</html>
