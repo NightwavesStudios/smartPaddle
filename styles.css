@@ -126,6 +126,6 @@ a:hover {
 }
 
 canvas {
-  max-width: 100%;
+  max-width: 95vw;
   height: auto;
 }
